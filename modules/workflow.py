@@ -4,7 +4,7 @@ from modules.api_client import AviMockClient
 from modules.mock_tools import mock_ssh_connect, mock_rdp_validate
 
 def run_test_workflow(config_path, test_data_path, logger):
-    # Pass the logger into the client here!
+    # Pass the logger into the client here
     client = AviMockClient(config_path, logger=logger)
     
     try:
