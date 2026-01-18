@@ -49,8 +49,9 @@ class AviMockClient:
             return response.json()
 
     def update_vs_state(self, uuid, enabled_status):
-        """Step 3: Convert VS endpoint to a PUT request to update state [cite: 43, 123]"""
-        url = f"{self.base_url}/api/virtualservice/{uuid}"
-        payload = {"enabled": enabled_status}
-        response = requests.put(url, json=payload, headers=self.headers)
-        return response.json()
+            # Ensure proper URL formatting for the PUT request
+            base_endpoint = self.config['endpoints']['virtual_service'].rstrip('/')
+            url = f"{self.base_url.rstrip('/')}/{base_endpoint.lstrip('/')}/{uuid}"
+            payload = {"enabled": enabled_status}
+            response = requests.put(url, json=payload, headers=self.headers)
+            return response.json()
