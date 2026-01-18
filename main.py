@@ -1,73 +1,61 @@
 import threading
 import time
-from rich.live import Live
-from rich.layout import Layout
-from rich.panel import Panel
-from rich.text import Text
+import re
 from modules.workflow import run_test_workflow
 
-# --- UI State Management ---
-# Buffers to store the logs for each thread
-log_buffer_1 = []
-log_buffer_2 = []
+# ANSI Color Codes
+CYAN = "\033[96m"
+YELLOW = "\033[93m"
+RESET = "\033[0m"
+BOLD = "\033[1m"
 
-def make_layout():
-    """Defines the split-screen layout."""
-    layout = Layout()
-    layout.split_row(
-        Layout(name="left", ratio=1),
-        Layout(name="right", ratio=1)
-    )
-    return layout
+print_lock = threading.Lock()
 
-def generate_panel(logs, title, color):
-    """Creates a UI panel from a list of log strings."""
-    # Join logs and keep only the last 20 lines to prevent overflow
-    log_text = "\n".join(logs[-20:])
-    return Panel(Text.from_markup(log_text), title=title, border_style=color)
+class IndentedLogger:
+    def __init__(self, thread_name, color, indent_level=0):
+        self.thread_name = thread_name
+        self.color = color
+        # 50 spaces of padding for Thread 2
+        self.padding = " " * 50 if indent_level > 0 else ""
 
-def logger_thread_1(message):
-    """Callback for Thread 1 to write logs safely."""
-    log_buffer_1.append(str(message))
+    def log(self, message):
+        """
+        Prints messages with thread-specific color and indentation.
+        """
+        # 1. Strip Rich tags like [bold] or [cyan]
+        clean_msg = re.sub(r'\[/?[a-z]+\s?[a-z]*\]', '', str(message))
+        clean_msg = clean_msg.replace("[/]", "")
 
-def logger_thread_2(message):
-    """Callback for Thread 2 to write logs safely."""
-    log_buffer_2.append(str(message))
+        with print_lock:
+            # Structure: [PADDING] [COLOR] [THREAD-NAME] MESSAGE [RESET]
+            print(f"{self.padding}{self.color}[{self.thread_name}] {clean_msg}{RESET}")
 
 def main():
     config_file = "config/api_config.yaml"
     test_data_file = "config/test_case_1.yaml"
 
-    # Setup the Rich Layout
-    layout = make_layout()
+    print(f"{BOLD}=== Initializing Indented Parallel Execution ==={RESET}")
+    print(f"{CYAN}THREAD-1 (Left){RESET}" + (" " * 35) + f"{YELLOW}THREAD-2 (Indented){RESET}\n")
+
+    # Thread 1: No Indent, Cyan
+    logger1 = IndentedLogger("THREAD-1", CYAN, indent_level=0)
     
-    # Initialize Threads with their respective loggers
-    thread1 = threading.Thread(
-        target=run_test_workflow, 
-        args=(config_file, test_data_file, logger_thread_1)
-    )
-    thread2 = threading.Thread(
-        target=run_test_workflow, 
-        args=(config_file, test_data_file, logger_thread_2)
-    )
+    # Thread 2: 50-space Indent, Yellow
+    logger2 = IndentedLogger("THREAD-2", YELLOW, indent_level=1)
 
-    # Start the Live Dashboard
-    print("Initializing Parallel Test Dashboard...")
-    with Live(layout, refresh_per_second=10, screen=False):
-        thread1.start()
-        thread2.start()
+    # Initialize Threads
+    thread1 = threading.Thread(target=run_test_workflow, args=(config_file, test_data_file, logger1.log))
+    thread2 = threading.Thread(target=run_test_workflow, args=(config_file, test_data_file, logger2.log))
 
-        # UI Loop: Keep updating the screen while threads are alive
-        while thread1.is_alive() or thread2.is_alive():
-            layout["left"].update(generate_panel(log_buffer_1, "THREAD 1 (Left)", "cyan"))
-            layout["right"].update(generate_panel(log_buffer_2, "THREAD 2 (Right)", "yellow"))
-            time.sleep(0.1)
-        
-        # Final update to ensure last messages are shown
-        layout["left"].update(generate_panel(log_buffer_1, "THREAD 1 (Left)", "cyan"))
-        layout["right"].update(generate_panel(log_buffer_2, "THREAD 2 (Right)", "yellow"))
+    # Start
+    thread1.start()
+    thread2.start()
 
-    print("\n=== All Parallel Test Cases Completed ===")
+    # Wait
+    thread1.join()
+    thread2.join()
+
+    print(f"\n{BOLD}=== All Parallel Test Cases Completed ==={RESET}")
 
 if __name__ == "__main__":
     main()
