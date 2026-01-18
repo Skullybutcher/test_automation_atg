@@ -2,7 +2,7 @@
 base_url: "https://semantic-brandea-banao-dc049ed0.koyeb.app"
 endpoints:
   register: "/register"
-  login: "/login1"
+  login: "/login"
   virtual_service: "/api/virtualservice"
   tenants: "/api/tenant"
   service_engines: "/api/serviceengine"

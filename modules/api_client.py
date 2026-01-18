@@ -22,27 +22,31 @@ class AviMockClient:
         return response.status_code
 
     def login(self):
-        url = f"{self.base_url}/login1"
-        # The doc requires Basic Auth for the login step 
-        auth = (self.config['auth']['username'], self.config['auth']['password'])
-        try:
-            response = requests.post(url, auth=auth)
-            if response.status_code == 200:
-                self.token = response.json().get('token')
-                self.headers = {"Authorization": f"Bearer {self.token}"} # [cite: 72, 151]
-                return True
-            else:
-                print(f"Login Error: {response.status_code} - {response.text}")
+            # Use rstrip and lstrip to ensure exactly one slash between base and endpoint
+            endpoint = self.config['endpoints']['login'].lstrip('/')
+            url = f"{self.base_url.rstrip('/')}/{endpoint}"
+            
+            print(f"DEBUG: Attempting login at: {url}") # This will confirm if the URL is correct
+            
+            auth = (self.config['auth']['username'], self.config['auth']['password'])
+            try:
+                # [cite_start]The assignment strictly requires Basic Auth for login [cite: 67, 144]
+                response = requests.post(url, auth=auth)
+                if response.status_code == 200:
+                    self.token = response.json().get('token')
+                    self.headers = {"Authorization": f"Bearer {self.token}"}
+                    return True
+                else:
+                    print(f"Login Error: {response.status_code} - {response.text}")
+                    return False
+            except Exception as e:
+                print(f"Connection Failed: {e}")
                 return False
-        except Exception as e:
-            print(f"Connection Failed: {e}")
-            return False
 
     def get_resource(self, endpoint):
-        """Generic GET method for fetching tenants, VSs, or SEs [cite: 34, 118]"""
-        url = f"{self.base_url}{endpoint}"
-        response = requests.get(url, headers=self.headers)
-        return response.json()
+            url = f"{self.base_url.rstrip('/')}/{endpoint.lstrip('/')}"
+            response = requests.get(url, headers=self.headers)
+            return response.json()
 
     def update_vs_state(self, uuid, enabled_status):
         """Step 3: Convert VS endpoint to a PUT request to update state [cite: 43, 123]"""

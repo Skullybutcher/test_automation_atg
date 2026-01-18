@@ -1,9 +1,14 @@
+import yaml
 from modules.api_client import AviMockClient
 from modules.mock_tools import mock_ssh_connect, mock_rdp_validate
 
 def run_test_workflow(config_path, test_data_path):
-    # Initialize the client with the main config
+    # Initialize the client with the main API config
     client = AviMockClient(config_path)
+    
+    # Load the specific test case data dynamically 
+    with open(test_data_path, 'r') as file:
+        test_case_data = yaml.safe_load(file)
     
     # 0. Preparation: Register and Login
     print(f"--- Starting Session for {config_path} ---")
@@ -13,20 +18,22 @@ def run_test_workflow(config_path, test_data_path):
         return
 
     # 1. Pre-Fetcher Stage
-    # Fetch all tenants, virtual services, and service engines [cite: 34, 118]
+    # Fetch all tenants, virtual services, and service engines from mock API 
     print("\n[Stage 1: Pre-Fetcher]")
     tenants = client.get_resource(client.config['endpoints']['tenants'])
     v_services = client.get_resource(client.config['endpoints']['virtual_service'])
     s_engines = client.get_resource(client.config['endpoints']['service_engines'])
     
-    # Log the counts or names as required [cite: 35, 119]
+    # Log the counts as part of the pre-fetch stage [cite: 35, 119]
     print(f"Tenants found: {len(tenants)}")
     print(f"Virtual Services found: {len(v_services)}")
     print(f"Service Engines found: {len(s_engines)}")
 
     # 2. Pre-Validation Stage
     print("\n[Stage 2: Pre-Validation]")
-    target_vs_name = "backend-vs-t1r_1000-1" # Target name from doc [cite: 39, 121]
+    target_vs_name = test_case_data['target_vs_name'] 
+    
+    # Identify specific Virtual Service 
     target_vs = next((vs for vs in v_services if vs['name'] == target_vs_name), None)
     
     if not target_vs:
@@ -46,16 +53,16 @@ def run_test_workflow(config_path, test_data_path):
     vs_uuid = target_vs['uuid']
     print(f"Disabling Virtual Service (UUID: {vs_uuid})...")
     
-    # Send payload {"enabled": false} [cite: 44, 124]
+    # Send payload {"enabled": false} to disable the VS [cite: 44, 124]
     update_result = client.update_vs_state(vs_uuid, enabled_status=False)
     
-    # Trigger mock SSH/RDP as required for automation components [cite: 27, 113]
+    # Trigger mock components [cite: 27, 113]   
     mock_ssh_connect("192.168.1.100")
     mock_rdp_validate("192.168.1.101")
 
-    # 4. Post-Validation Stage (Recommended)
+    # 4. Post-Validation Stage
     print("\n[Stage 4: Post-Validation]")
-    # Verify the VS is now disabled using a follow-up GET [cite: 47, 127]
+    # Verify that the Virtual Service is now disabled [cite: 47, 127]
     final_vs_data = client.get_resource(f"{client.config['endpoints']['virtual_service']}/{vs_uuid}")
     
     if final_vs_data.get('enabled') is False:
