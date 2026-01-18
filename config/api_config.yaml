@@ -1,0 +1,13 @@
+# Global API Configuration
+base_url: "https://semantic-brandea-banao-dc049ed0.koyeb.app"
+endpoints:
+  register: "/register"
+  login: "/login1"
+  virtual_service: "/api/virtualservice"
+  tenants: "/api/tenant"
+  service_engines: "/api/serviceengine"
+
+# Credentials (used for registration and login)
+auth:
+  username: "Skullybutcher"
+  password: "test1234"

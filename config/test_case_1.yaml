@@ -1,0 +1,7 @@
+# Test Case Specifics
+test_case_name: "Disable Backend Virtual Service"
+target_vs_name: "backend-vs-t1r_1000-1"
+actions:
+  pre_validation_expected_state: true
+  trigger_payload:
+    enabled: false
